@@ -31,7 +31,7 @@ function Init {
     $scriptPath = $PSScriptRoot
 
     if (-not (Test-Path $scriptPath)) {
-        Write-Host "无法获取当前脚本路径，请检查脚本执行方式。" -ForegroundColor Red
+        Write-Host "无法获取当前脚本路径，请检查脚本执行方式" -ForegroundColor Red
         return
     }
 
@@ -40,7 +40,7 @@ function Init {
 
     # 检查是否已存在当前路径
     if ($currentPath -split ';' -contains $scriptPath) {
-        Write-Host "路径已存在于 $scope 级 PATH，无需重复添加。" -ForegroundColor Yellow
+        Write-Host "路径已存在于 $scope 级 PATH，无需重复添加" -ForegroundColor Yellow
         return
     }
 
@@ -58,12 +58,13 @@ function Add {
     )
     # Write-Host $Path
     $folderName = (Split-Path $Path -Leaf)
-    Write-Host "添加 $folderName，路径：$Path"
-
+    
     if ($JSON_DATA.PSObject.Properties[$folderName]) {
+        Write-Host "更新版本 $folderName，路径：$Path"
         $JSON_DATA.$folderName = $Path
     }
     else {
+        Write-Host "添加版本 $folderName，路径：$Path"
         $JSON_DATA | Add-Member -MemberType NoteProperty -Name "$folderName" -Value "$Path"
     }
 }
@@ -75,7 +76,7 @@ function Global {
 
     # 如果没有管理员权限，则提示并退出
     if (-not (Is-Admin)) {
-        Write-Host "当前用户没有管理员权限。请以管理员身份运行此脚本。" -ForegroundColor Red
+        Write-Host "当前用户没有管理员权限。请以管理员身份运行此脚本" -ForegroundColor Red
         return
     }
 
@@ -93,12 +94,11 @@ function Global {
 
         # 获取当前 PATH 环境变量
         $currentPath = [Environment]::GetEnvironmentVariable("Path", "Machine")
-        Write-Host $currentPath
-
+        
         # 检查 PATH 中是否包含 %JAVA_HOME%\bin 和 %JAVA_HOME%\jre\bin
         $javaBinPath = "%JAVA_HOME%\bin"
         $javaJreBinPath = "%JAVA_HOME%\jre\bin"
-
+        
         if ($currentPath -notmatch [regex]::Escape($javaBinPath)) {
             $currentPath = "$currentPath;%JAVA_HOME%\bin"
         }
@@ -106,14 +106,15 @@ function Global {
         if ($currentPath -notmatch [regex]::Escape($javaJreBinPath)) {
             $currentPath = "$currentPath;%JAVA_HOME%\jre\bin"
         }
-
+        
         # 更新 PATH 环境变量
         [Environment]::SetEnvironmentVariable("Path", $currentPath, "Machine")
-
-        Write-Host "JAVA_HOME, CLASSPATH 和 PATH 已更新。" -ForegroundColor Green
+        Write-Host "更新后PATH变量：$currentPath"
+        
+        Write-Host "JAVA_HOME, CLASSPATH 和 PATH 已更新" -ForegroundColor Green
     }
     else {
-        Write-Host "未找到指定版本 $Version 的 Java 路径。" -ForegroundColor Red
+        Write-Host "未找到指定版本 $Version 的 Java 路径" -ForegroundColor Red
     }
 }
 
@@ -131,9 +132,26 @@ function Shell {
         $env:PATH = "$env:JAVA_HOME\bin;$env:JAVA_HOME\jre\bin;$env:PATH"
     }
     else {
-        Write-Host "未找到指定版本 $Version 的 Java 路径。" -ForegroundColor Red
+        Write-Host "未找到指定版本 $Version 的 Java 路径" -ForegroundColor Red
     }
 }
+
+function Remove {
+    param (
+        [string]$Version
+    )
+
+    # 检查指定版本是否存在
+    if ($JSON_DATA.PSObject.Properties[$Version]) {
+        # 删除指定版本字段
+        $JSON_DATA.PSObject.Properties.Remove($Version)
+        Write-Host "已成功删除版本 $Version" -ForegroundColor Green
+    }
+    else {
+        Write-Host "未找到指定版本 $Version" -ForegroundColor Red
+    }
+}
+
 
 function Versions {
     Write-Host $JSON_DATA
@@ -166,6 +184,9 @@ elseif ($versions) {
 }
 elseif ($shell) {
     Shell -Version $shell
+}
+elseif ($remove) {
+    Remove -Version $remove
 }
 else {
     Write-Host "未知参数"

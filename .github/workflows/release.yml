@@ -1,0 +1,30 @@
+name: Release on Tag Push
+
+on:
+  push:
+    tags:
+      - 'v*' # 触发规则：只针对以 'v' 开头的标签（例如：v1.0.0）
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout the code from the repository
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      # Create a compressed archive of all non-hidden files
+      - name: Create compressed archive
+        run: |
+          TAG_NAME=${GITHUB_REF##*/}
+          zip -r jenv-${TAG_NAME}.zip * -x ".*"
+
+      # Create a release on GitHub
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            jenv-*.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
