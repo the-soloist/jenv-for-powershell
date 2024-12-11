@@ -157,7 +157,6 @@ function Versions {
     Write-Host $JSON_DATA
 }
 
-
 $JSON_FILE = Join-Path -Path $PSScriptRoot -ChildPath "versions.json"
 
 # 检查文件是否存在
