@@ -7,10 +7,10 @@ param (
     [bool]$versions
 )
 
-# 判断是否为管理员权限
+# Check if the script is run with administrator privileges
 function Is-Admin {
     try {
-        # 检查是否具有管理员权限
+        # Check if the current user has administrator privileges
         $currentUser = [Security.Principal.WindowsIdentity]::GetCurrent()
         $principal = New-Object Security.Principal.WindowsPrincipal($currentUser)
         return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
@@ -24,31 +24,31 @@ function Init {
     param (
         [Parameter(Mandatory = $false)]
         [ValidateSet("User", "Machine")]
-        [string]$Scope = "User"  # "User" 表示用户级，"Machine" 表示系统级（需要管理员权限）
+        [string]$Scope = "User"  # "User" for user-level, "Machine" for system-level (requires admin privileges)
     )
 
-    # 获取当前脚本所在目录
+    # Get the current script directory
     $scriptPath = $PSScriptRoot
 
     if (-not (Test-Path $scriptPath)) {
-        Write-Host "无法获取当前脚本路径，请检查脚本执行方式" -ForegroundColor Red
+        Write-Host "Unable to get the current script path. Please check how the script is executed." -ForegroundColor Red
         return
     }
 
-    # 获取当前 PATH
+    # Get the current PATH
     $currentPath = [Environment]::GetEnvironmentVariable("Path", $scope)
 
-    # 检查是否已存在当前路径
+    # Check if the path already exists
     if ($currentPath -split ';' -contains $scriptPath) {
-        Write-Host "路径已存在于 $scope 级 PATH，无需重复添加" -ForegroundColor Yellow
+        Write-Host "The path is already in $scope level PATH. No need to add it again." -ForegroundColor Yellow
         return
     }
 
-    # 添加当前脚本路径到 PATH
+    # Add the current script path to PATH
     $newPath = "$scriptPath;$currentPath"
     [Environment]::SetEnvironmentVariable("Path", $newPath, $scope)
 
-    Write-Host "当前脚本路径已添加到 $scope 级 PATH：" -ForegroundColor Green
+    Write-Host "The current script path has been added to $scope level PATH:" -ForegroundColor Green
     # Write-Host $newPath
 }
 
@@ -60,11 +60,11 @@ function Add {
     $folderName = (Split-Path $Path -Leaf)
     
     if ($JSON_DATA.PSObject.Properties[$folderName]) {
-        Write-Host "更新版本 $folderName，路径：$Path"
+        Write-Host "Updating version $folderName, Path: $Path"
         $JSON_DATA.$folderName = $Path
     }
     else {
-        Write-Host "添加版本 $folderName，路径：$Path"
+        Write-Host "Adding version $folderName, Path: $Path"
         $JSON_DATA | Add-Member -MemberType NoteProperty -Name "$folderName" -Value "$Path"
     }
 }
@@ -74,28 +74,28 @@ function Global {
         [string]$Version
     )
 
-    # 如果没有管理员权限，则提示并退出
+    # If no admin privileges, display a message and exit
     if (-not (Is-Admin)) {
-        Write-Host "当前用户没有管理员权限。请以管理员身份运行此脚本" -ForegroundColor Red
+        Write-Host "Current user does not have admin privileges. Please run this script as an administrator." -ForegroundColor Red
         return
     }
 
-    # 获取指定版本路径
+    # Get the path of the specified version
     if ($JSON_DATA.PSObject.Properties[$Version]) {
         $javaHome = $JSON_DATA.$Version
-        Write-Host "使用的 JAVA_HOME 路径是：$javaHome" -ForegroundColor Green
+        Write-Host "The JAVA_HOME path being used is: $javaHome" -ForegroundColor Green
 
-        # 设置 JAVA_HOME 环境变量
+        # Set JAVA_HOME environment variable
         [Environment]::SetEnvironmentVariable("JAVA_HOME", $javaHome, "Machine")
 
-        # 设置 CLASSPATH 环境变量
+        # Set CLASSPATH environment variable
         $classPath = ".;%JAVA_HOME%\lib\dt.jar;%JAVA_HOME%\lib\tools.jar;"
         [Environment]::SetEnvironmentVariable("CLASSPATH", $classPath, "Machine")
 
-        # 获取当前 PATH 环境变量
+        # Get the current PATH environment variable
         $currentPath = [Environment]::GetEnvironmentVariable("Path", "Machine")
         
-        # 检查 PATH 中是否包含 %JAVA_HOME%\bin 和 %JAVA_HOME%\jre\bin
+        # Check if PATH contains %JAVA_HOME%\bin and %JAVA_HOME%\jre\bin
         $javaBinPath = "%JAVA_HOME%\bin"
         $javaJreBinPath = "%JAVA_HOME%\jre\bin"
         
@@ -107,14 +107,14 @@ function Global {
             $currentPath = "$currentPath;%JAVA_HOME%\jre\bin"
         }
         
-        # 更新 PATH 环境变量
+        # Update PATH environment variable
         [Environment]::SetEnvironmentVariable("Path", $currentPath, "Machine")
-        Write-Host "更新后PATH变量：$currentPath"
+        Write-Host "Updated PATH variable: $currentPath"
         
-        Write-Host "JAVA_HOME, CLASSPATH 和 PATH 已更新" -ForegroundColor Green
+        Write-Host "JAVA_HOME, CLASSPATH, and PATH have been updated." -ForegroundColor Green
     }
     else {
-        Write-Host "未找到指定版本 $Version 的 Java 路径" -ForegroundColor Red
+        Write-Host "The specified Java version $Version path was not found." -ForegroundColor Red
     }
 }
 
@@ -123,16 +123,16 @@ function Shell {
         [string]$Version
     )
 
-    # 获取指定版本路径
+    # Get the path of the specified version
     if ($JSON_DATA.PSObject.Properties[$Version]) {
         $javaHome = $JSON_DATA.$Version
-        Write-Host "使用的 JAVA_HOME 路径是：$javaHome" -ForegroundColor Green
+        Write-Host "The JAVA_HOME path being used is: $javaHome" -ForegroundColor Green
 
         $env:JAVA_HOME = "$javaHome"
         $env:PATH = "$env:JAVA_HOME\bin;$env:JAVA_HOME\jre\bin;$env:PATH"
     }
     else {
-        Write-Host "未找到指定版本 $Version 的 Java 路径" -ForegroundColor Red
+        Write-Host "The specified Java version $Version path was not found." -ForegroundColor Red
     }
 }
 
@@ -141,17 +141,16 @@ function Remove {
         [string]$Version
     )
 
-    # 检查指定版本是否存在
+    # Check if the specified version exists
     if ($JSON_DATA.PSObject.Properties[$Version]) {
-        # 删除指定版本字段
+        # Remove the specified version field
         $JSON_DATA.PSObject.Properties.Remove($Version)
-        Write-Host "已成功删除版本 $Version" -ForegroundColor Green
+        Write-Host "Successfully removed version $Version" -ForegroundColor Green
     }
     else {
-        Write-Host "未找到指定版本 $Version" -ForegroundColor Red
+        Write-Host "The specified Java version $Version was not found." -ForegroundColor Red
     }
 }
-
 
 function Versions {
     Write-Host $JSON_DATA
@@ -159,13 +158,13 @@ function Versions {
 
 $JSON_FILE = Join-Path -Path $PSScriptRoot -ChildPath "versions.json"
 
-# 检查文件是否存在
+# Check if the file exists
 if (Test-Path $JSON_FILE) {
-    # 如果存在，读取文件
+    # If it exists, read the file
     $JSON_DATA = Get-Content -Path $JSON_FILE -Raw | ConvertFrom-Json
 }
 else {
-    # 如果不存在，创建一个新的哈希表来存储路径
+    # If it does not exist, create a new hashtable to store paths
     $JSON_DATA = '{}' | ConvertFrom-Json
 }
 
@@ -188,7 +187,7 @@ elseif ($remove) {
     Remove -Version $remove
 }
 else {
-    Write-Host "未知参数"
+    Write-Host "Unknown parameter"
 }
 
 $JSON_DATA | ConvertTo-Json -Depth 3 | Set-Content -Path $JSON_FILE
